@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Minus, Plus, Search, X } from "lucide-react";
 import type { Item, TransactionType } from "@/types/database";
 import { recordTransaction } from "@/lib/queries";
+import { convertToBaseUnit, getAlternateUnit } from "@/lib/units";
 
 const IN_REASONS = ["Received from supplier", "Returned from department", "Stock correction", "Other"];
 const OUT_REASONS = ["Issued to Kitchen", "Issued to Housekeeping", "Issued to Front Office", "Damaged / Expired", "Other"];
@@ -19,23 +20,28 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
   const isIn = type === "IN";
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const [entryUnit, setEntryUnit] = useState<string | null>(null);
   const [reasonPreset, setReasonPreset] = useState((isIn ? IN_REASONS : OUT_REASONS)[0]);
   const [customReason, setCustomReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  const sortedItems = useMemo(() => [...items].sort((a, b) => a.name.localeCompare(b.name)), [items]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items.slice(0, 30);
-    return items.filter((i) => i.name.toLowerCase().includes(q)).slice(0, 30);
-  }, [items, search]);
+    if (!q) return sortedItems;
+    return sortedItems.filter((i) => i.name.toLowerCase().includes(q));
+  }, [sortedItems, search]);
+
+  const alternateUnit = selectedItem ? getAlternateUnit(selectedItem.unit) : null;
+  const activeEntryUnit = selectedItem ? entryUnit ?? selectedItem.unit : null;
+
+  function selectItem(item: Item) {
+    setSelectedItem(item);
+    setEntryUnit(null);
+  }
 
   const reason = reasonPreset === "Other" ? customReason : reasonPreset;
   const qtyNumber = Number(quantity);
@@ -43,14 +49,15 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
     !!selectedItem && quantity.trim() !== "" && qtyNumber > 0 && reason.trim() !== "" && !submitting;
 
   async function handleSubmit() {
-    if (!selectedItem || !canSubmit) return;
+    if (!selectedItem || !canSubmit || !activeEntryUnit) return;
     setSubmitting(true);
     setError(null);
     try {
+      const quantityInBaseUnit = convertToBaseUnit(qtyNumber, activeEntryUnit, selectedItem.unit);
       await recordTransaction({
         itemId: selectedItem.id,
         type,
-        quantity: qtyNumber,
+        quantity: quantityInBaseUnit,
         reason: reason.trim(),
       });
       onSuccess();
@@ -84,18 +91,13 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
         </div>
 
         <div className="overflow-y-auto px-5 py-4 space-y-4 flex-1">
-          {/* Item search / dropdown */}
-          <div className="relative">
+          {/* Item picker */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Item</label>
             {selectedItem ? (
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedItem(null);
-                  setSearch("");
-                  setShowDropdown(true);
-                  requestAnimationFrame(() => inputRef.current?.focus());
-                }}
+                onClick={() => setSelectedItem(null)}
                 className="w-full flex items-center justify-between rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3.5 text-left"
               >
                 <span className="font-semibold text-gray-900">{selectedItem.name}</span>
@@ -104,53 +106,63 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
                 </span>
               </button>
             ) : (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  placeholder="Search item..."
-                  className="w-full rounded-xl border-2 border-gray-200 pl-10 pr-4 py-3.5 text-base focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            )}
-
-            {showDropdown && !selectedItem && (
-              <div className="absolute z-10 mt-1 w-full max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
-                {filteredItems.length === 0 && (
-                  <div className="px-4 py-3 text-sm text-gray-500">No items found</div>
-                )}
-                {filteredItems.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedItem(item);
-                      setShowDropdown(false);
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 border-b border-gray-100 last:border-0"
-                  >
-                    <span className="font-medium text-gray-900">{item.name}</span>
-                    <span className="text-xs text-gray-500">
-                      {item.current_stock} {item.unit}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="relative mb-2">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                  <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Filter (optional)..."
+                    className="w-full rounded-xl border-2 border-gray-200 pl-10 pr-4 py-3 text-base focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <div className="max-h-64 overflow-y-auto rounded-xl border-2 border-gray-200 divide-y divide-gray-100">
+                  {filteredItems.length === 0 && (
+                    <div className="px-4 py-3 text-sm text-gray-500">No items found</div>
+                  )}
+                  {filteredItems.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectItem(item)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100"
+                    >
+                      <span className="font-medium text-gray-900">{item.name}</span>
+                      <span className="text-xs text-gray-500">
+                        {item.current_stock} {item.unit}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
           {/* Quantity */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Quantity {selectedItem ? `(${selectedItem.unit})` : ""}
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Quantity</label>
+              {selectedItem && alternateUnit && (
+                <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-semibold">
+                  {[selectedItem.unit, alternateUnit].map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => setEntryUnit(u)}
+                      className={`px-2.5 py-1 ${
+                        activeEntryUnit === u ? "bg-gray-900 text-white" : "bg-white text-gray-500"
+                      }`}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {selectedItem && !alternateUnit && (
+                <span className="text-xs font-semibold text-gray-400">{selectedItem.unit}</span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -176,6 +188,11 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
                 +
               </button>
             </div>
+            {selectedItem && alternateUnit && activeEntryUnit !== selectedItem.unit && quantity.trim() !== "" && (
+              <p className="text-xs text-gray-400 mt-1">
+                = {convertToBaseUnit(qtyNumber || 0, activeEntryUnit!, selectedItem.unit)} {selectedItem.unit}
+              </p>
+            )}
           </div>
 
           {/* Reason */}

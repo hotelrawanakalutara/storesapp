@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { addItem, updateItem } from "@/lib/queries";
+import { UNIT_OPTIONS } from "@/lib/units";
 import type { Item } from "@/types/database";
 
 interface AddItemModalProps {
@@ -13,13 +14,17 @@ interface AddItemModalProps {
 
 export default function AddItemModal({ item, onClose, onSuccess }: AddItemModalProps) {
   const isEdit = !!item;
+  const knownUnit = item && (UNIT_OPTIONS as readonly string[]).includes(item.unit);
   const [name, setName] = useState(item?.name ?? "");
-  const [unit, setUnit] = useState(item?.unit ?? "pcs");
+  const [unit, setUnit] = useState(knownUnit ? item!.unit : "pcs");
+  const [customUnit, setCustomUnit] = useState(item && !knownUnit ? item.unit : "");
+  const [isCustomUnit, setIsCustomUnit] = useState(!!item && !knownUnit);
   const [reorderLimit, setReorderLimit] = useState(item ? String(item.reorder_limit) : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = name.trim() !== "" && unit.trim() !== "" && reorderLimit.trim() !== "" && !submitting;
+  const finalUnit = isCustomUnit ? customUnit.trim() : unit;
+  const canSubmit = name.trim() !== "" && finalUnit !== "" && reorderLimit.trim() !== "" && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -27,9 +32,9 @@ export default function AddItemModal({ item, onClose, onSuccess }: AddItemModalP
     setError(null);
     try {
       if (isEdit) {
-        await updateItem(item.id, { name, unit, reorder_limit: Number(reorderLimit) || 0 });
+        await updateItem(item.id, { name, unit: finalUnit, reorder_limit: Number(reorderLimit) || 0 });
       } else {
-        await addItem({ name, unit, reorder_limit: Number(reorderLimit) || 0 });
+        await addItem({ name, unit: finalUnit, reorder_limit: Number(reorderLimit) || 0 });
       }
       onSuccess();
     } catch (e) {
@@ -62,13 +67,34 @@ export default function AddItemModal({ item, onClose, onSuccess }: AddItemModalP
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-              <input
-                type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="pcs, btl, kg..."
-                className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-base focus:border-blue-500 focus:outline-none"
-              />
+              <select
+                value={isCustomUnit ? "__other__" : unit}
+                onChange={(e) => {
+                  if (e.target.value === "__other__") {
+                    setIsCustomUnit(true);
+                  } else {
+                    setIsCustomUnit(false);
+                    setUnit(e.target.value);
+                  }
+                }}
+                className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-base focus:border-blue-500 focus:outline-none bg-white"
+              >
+                {UNIT_OPTIONS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+                <option value="__other__">Other...</option>
+              </select>
+              {isCustomUnit && (
+                <input
+                  type="text"
+                  value={customUnit}
+                  onChange={(e) => setCustomUnit(e.target.value)}
+                  placeholder="Enter unit"
+                  className="w-full mt-2 rounded-xl border-2 border-gray-200 px-4 py-3 text-base focus:border-blue-500 focus:outline-none"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Reorder Limit</label>
