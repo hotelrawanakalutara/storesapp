@@ -199,13 +199,4 @@ grant execute on function get_or_create_daily_snapshot(uuid, date) to anon, auth
 grant execute on function ensure_today_snapshots() to anon, authenticated;
 grant execute on function record_transaction(uuid, text, numeric, text, text) to anon, authenticated;
 
--- ============================================================================
--- Seed data (optional) — remove or edit before going live.
--- ============================================================================
-insert into items (name, unit, reorder_limit, current_stock) values
-  ('Bath Towel',        'pcs',  20, 50),
-  ('Bed Sheet (King)',  'pcs',  15, 40),
-  ('Mineral Water 1L',  'btl',  50, 120),
-  ('Hand Soap',         'btl',  10, 8),
-  ('Toilet Paper Roll', 'pcs',  30, 25)
-on conflict (lower(name)) do nothing;
+-- No seed data — add your store's items from the app's "Add Item" button.
