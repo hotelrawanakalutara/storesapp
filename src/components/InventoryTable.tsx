@@ -1,0 +1,162 @@
+"use client";
+
+import { AlertTriangle, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import type { TodayInventoryRow } from "@/types/database";
+
+interface InventoryTableProps {
+  rows: TodayInventoryRow[];
+  loading: boolean;
+}
+
+export default function InventoryTable({ rows, loading }: InventoryTableProps) {
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => r.name.toLowerCase().includes(q));
+  }, [rows, search]);
+
+  const lowStockCount = rows.filter((r) => r.low_stock).length;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search items..."
+            className="w-full rounded-xl border-2 border-gray-200 pl-10 pr-4 py-2.5 text-base focus:border-blue-500 focus:outline-none bg-white"
+          />
+        </div>
+        {lowStockCount > 0 && (
+          <span className="hidden sm:flex items-center gap-1 shrink-0 rounded-full bg-red-100 text-red-700 text-xs font-bold px-3 py-1.5">
+            <AlertTriangle size={14} /> {lowStockCount} low stock
+          </span>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="text-center py-16 text-gray-400">Loading inventory...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">No items found</div>
+      ) : (
+        <>
+          {/* Mobile: card list */}
+          <div className="grid gap-2.5 sm:hidden">
+            {filtered.map((item) => (
+              <div
+                key={item.id}
+                className={`rounded-xl border-2 p-4 ${
+                  item.low_stock ? "border-red-300 bg-red-50" : "border-gray-100 bg-white"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-bold text-gray-900">{item.name}</div>
+                    <div className="text-xs text-gray-500">{item.unit}</div>
+                  </div>
+                  {item.low_stock ? (
+                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-bold px-2.5 py-1">
+                      <AlertTriangle size={12} /> LOW STOCK
+                    </span>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1">
+                      OK
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                  <Stat label="Opening" value={item.opening_stock} />
+                  <Stat label="IN" value={item.stock_in} accent="text-emerald-600" />
+                  <Stat label="OUT" value={item.stock_out} accent="text-red-600" />
+                  <Stat
+                    label="Balance"
+                    value={item.current_balance}
+                    accent={item.low_stock ? "text-red-700" : "text-gray-900"}
+                    bold
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop / tablet: table */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-gray-100">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-gray-500 text-left">
+                  <th className="px-4 py-3 font-semibold">Item Name</th>
+                  <th className="px-4 py-3 font-semibold">Unit</th>
+                  <th className="px-4 py-3 font-semibold text-right">Opening</th>
+                  <th className="px-4 py-3 font-semibold text-right">Today IN</th>
+                  <th className="px-4 py-3 font-semibold text-right">Today OUT</th>
+                  <th className="px-4 py-3 font-semibold text-right">Balance</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((item) => (
+                  <tr key={item.id} className={item.low_stock ? "bg-red-50" : "bg-white"}>
+                    <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
+                    <td className="px-4 py-3 text-gray-500">{item.unit}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">{item.opening_stock}</td>
+                    <td className="px-4 py-3 text-right text-emerald-600 font-medium">
+                      {item.stock_in > 0 ? `+${item.stock_in}` : item.stock_in}
+                    </td>
+                    <td className="px-4 py-3 text-right text-red-600 font-medium">
+                      {item.stock_out > 0 ? `-${item.stock_out}` : item.stock_out}
+                    </td>
+                    <td
+                      className={`px-4 py-3 text-right font-bold ${
+                        item.low_stock ? "text-red-700" : "text-gray-900"
+                      }`}
+                    >
+                      {item.current_balance}
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.low_stock ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-red-600 text-white text-xs font-bold px-2.5 py-1">
+                          <AlertTriangle size={12} /> LOW STOCK
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1">
+                          OK
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+  bold,
+}: {
+  label: string;
+  value: number;
+  accent?: string;
+  bold?: boolean;
+}) {
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wide text-gray-400">{label}</div>
+      <div className={`text-sm ${bold ? "font-bold" : "font-medium"} ${accent ?? "text-gray-700"}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
