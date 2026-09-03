@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { addItem } from "@/lib/queries";
+import { addItem, updateItem } from "@/lib/queries";
+import type { Item } from "@/types/database";
 
 interface AddItemModalProps {
+  item?: Pick<Item, "id" | "name" | "unit" | "reorder_limit">;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AddItemModal({ onClose, onSuccess }: AddItemModalProps) {
-  const [name, setName] = useState("");
-  const [unit, setUnit] = useState("pcs");
-  const [reorderLimit, setReorderLimit] = useState("");
+export default function AddItemModal({ item, onClose, onSuccess }: AddItemModalProps) {
+  const isEdit = !!item;
+  const [name, setName] = useState(item?.name ?? "");
+  const [unit, setUnit] = useState(item?.unit ?? "pcs");
+  const [reorderLimit, setReorderLimit] = useState(item ? String(item.reorder_limit) : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,10 +26,14 @@ export default function AddItemModal({ onClose, onSuccess }: AddItemModalProps) 
     setSubmitting(true);
     setError(null);
     try {
-      await addItem({ name, unit, reorder_limit: Number(reorderLimit) || 0 });
+      if (isEdit) {
+        await updateItem(item.id, { name, unit, reorder_limit: Number(reorderLimit) || 0 });
+      } else {
+        await addItem({ name, unit, reorder_limit: Number(reorderLimit) || 0 });
+      }
       onSuccess();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to add item");
+      setError(e instanceof Error ? e.message : `Failed to ${isEdit ? "update" : "add"} item`);
     } finally {
       setSubmitting(false);
     }
@@ -36,7 +43,7 @@ export default function AddItemModal({ onClose, onSuccess }: AddItemModalProps) 
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
       <div className="w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 bg-gray-900 rounded-t-2xl">
-          <h2 className="text-lg font-bold text-white">Add New Item</h2>
+          <h2 className="text-lg font-bold text-white">{isEdit ? "Edit Item" : "Add New Item"}</h2>
           <button onClick={onClose} className="text-white/90 hover:text-white p-1 rounded-full active:bg-white/20">
             <X size={22} />
           </button>
@@ -74,6 +81,7 @@ export default function AddItemModal({ onClose, onSuccess }: AddItemModalProps) 
                 placeholder="0"
                 className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-base focus:border-blue-500 focus:outline-none"
               />
+              <p className="text-xs text-gray-400 mt-1">Balance at or below this shows LOW STOCK</p>
             </div>
           </div>
           {error && (
@@ -91,7 +99,7 @@ export default function AddItemModal({ onClose, onSuccess }: AddItemModalProps) 
               !canSubmit ? "bg-gray-300 cursor-not-allowed" : "bg-gray-900 active:bg-gray-800"
             }`}
           >
-            {submitting ? "Saving..." : "Add Item"}
+            {submitting ? "Saving..." : isEdit ? "Save Changes" : "Add Item"}
           </button>
         </div>
       </div>

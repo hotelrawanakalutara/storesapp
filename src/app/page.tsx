@@ -15,6 +15,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [modalType, setModalType] = useState<TransactionType | null>(null);
   const [showAddItem, setShowAddItem] = useState(false);
+  const [editingItem, setEditingItem] = useState<TodayInventoryRow | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -68,7 +69,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <InventoryTable rows={rows} loading={loading} />
+      <InventoryTable rows={rows} loading={loading} onEditItem={setEditingItem} />
 
       {modalType && (
         <QuickEntryModal
@@ -87,6 +88,17 @@ export default function DashboardPage() {
           onClose={() => setShowAddItem(false)}
           onSuccess={() => {
             setShowAddItem(false);
+            refresh();
+          }}
+        />
+      )}
+
+      {editingItem && (
+        <AddItemModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSuccess={() => {
+            setEditingItem(null);
             refresh();
           }}
         />

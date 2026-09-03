@@ -1,15 +1,16 @@
 "use client";
 
-import { AlertTriangle, Search } from "lucide-react";
+import { AlertTriangle, Pencil, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { TodayInventoryRow } from "@/types/database";
 
 interface InventoryTableProps {
   rows: TodayInventoryRow[];
   loading: boolean;
+  onEditItem: (row: TodayInventoryRow) => void;
 }
 
-export default function InventoryTable({ rows, loading }: InventoryTableProps) {
+export default function InventoryTable({ rows, loading, onEditItem }: InventoryTableProps) {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -60,15 +61,25 @@ export default function InventoryTable({ rows, loading }: InventoryTableProps) {
                     <div className="font-bold text-gray-900">{item.name}</div>
                     <div className="text-xs text-gray-500">{item.unit}</div>
                   </div>
-                  {item.low_stock ? (
-                    <span className="shrink-0 flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-bold px-2.5 py-1">
-                      <AlertTriangle size={12} /> LOW STOCK
-                    </span>
-                  ) : (
-                    <span className="shrink-0 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1">
-                      OK
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {item.low_stock ? (
+                      <span className="flex items-center gap-1 rounded-full bg-red-600 text-white text-[11px] font-bold px-2.5 py-1">
+                        <AlertTriangle size={12} /> LOW STOCK
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1">
+                        OK
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onEditItem(item)}
+                      aria-label={`Edit ${item.name}`}
+                      className="p-1.5 rounded-full text-gray-400 active:bg-gray-100"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-2 text-center">
                   <Stat label="Opening" value={item.opening_stock} />
@@ -97,6 +108,7 @@ export default function InventoryTable({ rows, loading }: InventoryTableProps) {
                   <th className="px-4 py-3 font-semibold text-right">Today OUT</th>
                   <th className="px-4 py-3 font-semibold text-right">Balance</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold w-10" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -128,6 +140,16 @@ export default function InventoryTable({ rows, loading }: InventoryTableProps) {
                           OK
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onEditItem(item)}
+                        aria-label={`Edit ${item.name}`}
+                        className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                      >
+                        <Pencil size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}

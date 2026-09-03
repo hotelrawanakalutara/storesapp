@@ -52,6 +52,25 @@ export async function addItem(input: {
   return data as Item;
 }
 
+export async function updateItem(
+  id: string,
+  input: { name: string; unit: string; reorder_limit: number }
+): Promise<Item> {
+  const { data, error } = await supabase
+    .from("items")
+    .update({
+      name: input.name.trim(),
+      unit: input.unit.trim() || "pcs",
+      reorder_limit: input.reorder_limit,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as Item;
+}
+
 export async function recordTransaction(input: {
   itemId: string;
   type: TransactionType;
