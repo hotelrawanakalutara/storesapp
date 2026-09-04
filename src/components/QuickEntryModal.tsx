@@ -5,6 +5,13 @@ import { Minus, Plus, Search, X } from "lucide-react";
 import type { Item, TransactionType } from "@/types/database";
 import { recordTransaction } from "@/lib/queries";
 import { convertToBaseUnit, getAlternateUnit } from "@/lib/units";
+import { getDisplayUnit, toDisplayValue } from "@/lib/format";
+
+function stockLabel(item: Item) {
+  const unit = getDisplayUnit(item.unit, Math.abs(item.current_stock));
+  const value = toDisplayValue(item.current_stock, item.unit, unit);
+  return `${value} ${unit}`;
+}
 
 const IN_REASONS = ["Received from supplier", "Returned from department", "Stock correction", "Other"];
 const OUT_REASONS = ["Issued to Kitchen", "Issued to Housekeeping", "Issued to Front Office", "Damaged / Expired", "Other"];
@@ -102,7 +109,7 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
               >
                 <span className="font-semibold text-gray-900">{selectedItem.name}</span>
                 <span className="text-sm text-gray-500">
-                  {selectedItem.current_stock} {selectedItem.unit} in stock · change
+                  {stockLabel(selectedItem)} in stock · change
                 </span>
               </button>
             ) : (
@@ -130,7 +137,7 @@ export default function QuickEntryModal({ type, items, onClose, onSuccess }: Qui
                     >
                       <span className="font-medium text-gray-900">{item.name}</span>
                       <span className="text-xs text-gray-500">
-                        {item.current_stock} {item.unit}
+                        {stockLabel(item)}
                       </span>
                     </button>
                   ))}

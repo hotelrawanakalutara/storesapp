@@ -3,6 +3,24 @@
 import { AlertTriangle, Pencil, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { TodayInventoryRow } from "@/types/database";
+import { getDisplayUnit, toDisplayValue } from "@/lib/format";
+
+function displayRow(item: TodayInventoryRow) {
+  const reference = Math.max(
+    Math.abs(item.opening_stock),
+    Math.abs(item.current_balance),
+    Math.abs(item.stock_in),
+    Math.abs(item.stock_out)
+  );
+  const unit = getDisplayUnit(item.unit, reference);
+  return {
+    unit,
+    opening_stock: toDisplayValue(item.opening_stock, item.unit, unit),
+    stock_in: toDisplayValue(item.stock_in, item.unit, unit),
+    stock_out: toDisplayValue(item.stock_out, item.unit, unit),
+    current_balance: toDisplayValue(item.current_balance, item.unit, unit),
+  };
+}
 
 interface InventoryTableProps {
   rows: TodayInventoryRow[];
@@ -49,7 +67,9 @@ export default function InventoryTable({ rows, loading, onEditItem }: InventoryT
         <>
           {/* Mobile: card list */}
           <div className="grid gap-2.5 sm:hidden">
-            {filtered.map((item) => (
+            {filtered.map((item) => {
+              const d = displayRow(item);
+              return (
               <div
                 key={item.id}
                 className={`rounded-xl border-2 p-4 ${
@@ -59,7 +79,7 @@ export default function InventoryTable({ rows, loading, onEditItem }: InventoryT
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="font-bold text-gray-900">{item.name}</div>
-                    <div className="text-xs text-gray-500">{item.unit}</div>
+                    <div className="text-xs text-gray-500">{d.unit}</div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {item.low_stock ? (
@@ -82,18 +102,19 @@ export default function InventoryTable({ rows, loading, onEditItem }: InventoryT
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-                  <Stat label="Opening" value={item.opening_stock} />
-                  <Stat label="IN" value={item.stock_in} accent="text-emerald-600" />
-                  <Stat label="OUT" value={item.stock_out} accent="text-red-600" />
+                  <Stat label="Opening" value={d.opening_stock} />
+                  <Stat label="IN" value={d.stock_in} accent="text-emerald-600" />
+                  <Stat label="OUT" value={d.stock_out} accent="text-red-600" />
                   <Stat
                     label="Balance"
-                    value={item.current_balance}
+                    value={d.current_balance}
                     accent={item.low_stock ? "text-red-700" : "text-gray-900"}
                     bold
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Desktop / tablet: table */}
@@ -112,23 +133,25 @@ export default function InventoryTable({ rows, loading, onEditItem }: InventoryT
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((item) => (
+                {filtered.map((item) => {
+                  const d = displayRow(item);
+                  return (
                   <tr key={item.id} className={item.low_stock ? "bg-red-50" : "bg-white"}>
                     <td className="px-4 py-3 font-medium text-gray-900">{item.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{item.unit}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{item.opening_stock}</td>
+                    <td className="px-4 py-3 text-gray-500">{d.unit}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">{d.opening_stock}</td>
                     <td className="px-4 py-3 text-right text-emerald-600 font-medium">
-                      {item.stock_in > 0 ? `+${item.stock_in}` : item.stock_in}
+                      {d.stock_in > 0 ? `+${d.stock_in}` : d.stock_in}
                     </td>
                     <td className="px-4 py-3 text-right text-red-600 font-medium">
-                      {item.stock_out > 0 ? `-${item.stock_out}` : item.stock_out}
+                      {d.stock_out > 0 ? `-${d.stock_out}` : d.stock_out}
                     </td>
                     <td
                       className={`px-4 py-3 text-right font-bold ${
                         item.low_stock ? "text-red-700" : "text-gray-900"
                       }`}
                     >
-                      {item.current_balance}
+                      {d.current_balance}
                     </td>
                     <td className="px-4 py-3">
                       {item.low_stock ? (
@@ -152,7 +175,8 @@ export default function InventoryTable({ rows, loading, onEditItem }: InventoryT
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

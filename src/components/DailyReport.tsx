@@ -4,10 +4,28 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { getDailyReport, getTransactionsForDate } from "@/lib/queries";
+import { getDisplayUnit, toDisplayValue } from "@/lib/format";
 import type { DailyReportRow, TransactionWithItem } from "@/types/database";
 
 function todayIso() {
   return format(new Date(), "yyyy-MM-dd");
+}
+
+function displayRow(r: DailyReportRow) {
+  const reference = Math.max(
+    Math.abs(r.opening_stock),
+    Math.abs(r.closing_stock),
+    Math.abs(r.stock_in),
+    Math.abs(r.stock_out)
+  );
+  const unit = getDisplayUnit(r.unit, reference);
+  return {
+    unit,
+    opening_stock: toDisplayValue(r.opening_stock, r.unit, unit),
+    stock_in: toDisplayValue(r.stock_in, r.unit, unit),
+    stock_out: toDisplayValue(r.stock_out, r.unit, unit),
+    closing_stock: toDisplayValue(r.closing_stock, r.unit, unit),
+  };
 }
 
 export default function DailyReport() {
@@ -99,6 +117,7 @@ export default function DailyReport() {
               <tbody className="divide-y divide-gray-100">
                 {rows.map((r) => {
                   const low = r.closing_stock <= r.reorder_limit;
+                  const d = displayRow(r);
                   return (
                     <tr key={r.item_id} className={low ? "bg-red-50" : "bg-white"}>
                       <td className="px-4 py-2.5 font-medium text-gray-900">
@@ -107,11 +126,17 @@ export default function DailyReport() {
                           {low && <AlertTriangle size={14} className="text-red-600" />}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right text-gray-700">{r.opening_stock}</td>
-                      <td className="px-4 py-2.5 text-right text-emerald-600">+{r.stock_in}</td>
-                      <td className="px-4 py-2.5 text-right text-red-600">-{r.stock_out}</td>
+                      <td className="px-4 py-2.5 text-right text-gray-700">
+                        {d.opening_stock} {d.unit}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-emerald-600">
+                        +{d.stock_in} {d.unit}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-red-600">
+                        -{d.stock_out} {d.unit}
+                      </td>
                       <td className={`px-4 py-2.5 text-right font-bold ${low ? "text-red-700" : "text-gray-900"}`}>
-                        {r.closing_stock}
+                        {d.closing_stock} {d.unit}
                       </td>
                     </tr>
                   );
@@ -133,7 +158,11 @@ export default function DailyReport() {
           <div className="text-center py-10 text-gray-400">No transactions on this date</div>
         ) : (
           <div className="space-y-2">
-            {transactions.map((tx) => (
+            {transactions.map((tx) => {
+              const storedUnit = tx.items?.unit ?? "";
+              const displayUnit = getDisplayUnit(storedUnit, Math.abs(tx.quantity));
+              const displayQty = toDisplayValue(tx.quantity, storedUnit, displayUnit);
+              return (
               <div
                 key={tx.id}
                 className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3"
@@ -157,14 +186,15 @@ export default function DailyReport() {
                 <div className="text-right shrink-0">
                   <div className="font-bold text-gray-900">
                     {tx.type === "IN" ? "+" : "-"}
-                    {tx.quantity} {tx.items?.unit ?? ""}
+                    {displayQty} {displayUnit}
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-400 justify-end">
                     <Clock size={11} /> {format(new Date(tx.timestamp), "h:mm a")}
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
