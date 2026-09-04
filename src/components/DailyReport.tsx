@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { getDailyReport, getTransactionsForDate } from "@/lib/queries";
-import { getDisplayUnit, toDisplayValue } from "@/lib/format";
+import { getDisplayUnit, round2, toDisplayValue } from "@/lib/format";
 import type { DailyReportRow, TransactionWithItem } from "@/types/database";
 
 function todayIso() {
@@ -58,7 +58,7 @@ export default function DailyReport() {
     };
   }, [date]);
 
-  const totals = rows.reduce(
+  const rawTotals = rows.reduce(
     (acc, r) => ({
       opening: acc.opening + r.opening_stock,
       in: acc.in + r.stock_in,
@@ -67,6 +67,12 @@ export default function DailyReport() {
     }),
     { opening: 0, in: 0, out: 0, closing: 0 }
   );
+  const totals = {
+    opening: round2(rawTotals.opening),
+    in: round2(rawTotals.in),
+    out: round2(rawTotals.out),
+    closing: round2(rawTotals.closing),
+  };
 
   return (
     <div className="space-y-5">

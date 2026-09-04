@@ -8,9 +8,13 @@ export function getDisplayUnit(storedUnit: string, referenceValue: number): stri
   return scaled && Math.abs(referenceValue) >= 1000 ? scaled : storedUnit;
 }
 
-/** Converts a value from the item's stored unit into the given display unit. */
+/** Rounds to 2 decimal places, clearing floating-point noise like 60971.465000000004. */
+export function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/** Converts a value from the item's stored unit into the given display unit, always rounded to 2dp. */
 export function toDisplayValue(value: number, storedUnit: string, displayUnit: string): number {
-  if (storedUnit === displayUnit) return value;
-  const rounded = Math.round((value / 1000) * 100) / 100;
-  return rounded;
+  if (storedUnit === displayUnit) return round2(value);
+  return round2(value / 1000);
 }
