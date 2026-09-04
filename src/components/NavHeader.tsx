@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClipboardList, Warehouse } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 const tabs = [
   { href: "/", label: "Inventory", icon: Warehouse },
@@ -11,9 +12,22 @@ const tabs = [
 
 export default function NavHeader() {
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publishHeight = () => {
+      document.documentElement.style.setProperty("--nav-height", `${el.offsetHeight}px`);
+    };
+    publishHeight();
+    const observer = new ResizeObserver(publishHeight);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-100">
+    <header ref={headerRef} className="sticky top-0 z-40 bg-white border-b border-gray-100">
       <div className="max-w-5xl mx-auto px-4 pt-4 pb-2">
         <h1 className="text-xl font-extrabold text-gray-900">Hotel Store</h1>
         <p className="text-xs text-gray-400">Inventory &amp; stock management</p>

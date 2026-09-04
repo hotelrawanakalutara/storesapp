@@ -1,7 +1,7 @@
 "use client";
 
-import { AlertTriangle, Pencil, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { AlertTriangle, Pencil } from "lucide-react";
+import { useMemo } from "react";
 import type { TodayInventoryRow } from "@/types/database";
 import { getDisplayUnit, toDisplayValue } from "@/lib/format";
 
@@ -25,40 +25,19 @@ function displayRow(item: TodayInventoryRow) {
 interface InventoryTableProps {
   rows: TodayInventoryRow[];
   loading: boolean;
+  search: string;
   onEditItem: (row: TodayInventoryRow) => void;
 }
 
-export default function InventoryTable({ rows, loading, onEditItem }: InventoryTableProps) {
-  const [search, setSearch] = useState("");
-
+export default function InventoryTable({ rows, loading, search, onEditItem }: InventoryTableProps) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) => r.name.toLowerCase().includes(q));
   }, [rows, search]);
 
-  const lowStockCount = rows.filter((r) => r.low_stock).length;
-
   return (
     <div>
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search items..."
-            className="w-full rounded-xl border-2 border-gray-200 pl-10 pr-4 py-2.5 text-base focus:border-blue-500 focus:outline-none bg-white"
-          />
-        </div>
-        {lowStockCount > 0 && (
-          <span className="hidden sm:flex items-center gap-1 shrink-0 rounded-full bg-red-100 text-red-700 text-xs font-bold px-3 py-1.5">
-            <AlertTriangle size={14} /> {lowStockCount} low stock
-          </span>
-        )}
-      </div>
-
       {loading ? (
         <div className="text-center py-16 text-gray-400">Loading inventory...</div>
       ) : filtered.length === 0 ? (
